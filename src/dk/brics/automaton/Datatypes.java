@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+// TODO: Adapt to codepoint
+
 /**
  * Basic automata for representing common datatypes
  * related to Unicode, XML, and XML Schema.
@@ -229,7 +231,7 @@ final public class Datatypes {
 		"Names",
 		"language"
 	};
-	
+
 	static {
 		automata = new HashMap<String,Automaton>();
 		ws = Automaton.minimize(Automaton.makeCharSet(" \t\n\r").repeat());
@@ -565,7 +567,7 @@ final public class Datatypes {
 		putFrom("Letter", t);
 		putFrom("whitespacechar", t);
 		
-		put(automata, "whitespace", ws);
+		//put(automata, "whitespace", ws);
 
 		String[] uriexps = {
 				"digit", "[0-9]",
@@ -790,13 +792,13 @@ final public class Datatypes {
 		put(automata, "ByzantineMusicalSymbols", Automaton.makeChar('\ud834').concatenate(Automaton.makeCharRange('\udc00', '\udcff')));
 		put(automata, "MusicalSymbols", Automaton.makeChar('\ud834').concatenate(Automaton.makeCharRange('\udd00', '\uddff')));
 		put(automata, "MathematicalAlphanumericSymbols", Automaton.makeChar('\ud835').concatenate(Automaton.makeCharRange('\udc00', '\udfff')));
-		
+
 		put(automata, "CJKUnifiedIdeographsExtensionB", Automaton.makeCharRange('\ud840', '\ud868').concatenate(Automaton.makeCharRange('\udc00', '\udfff'))
 				                                       .union(Automaton.makeChar('\ud869').concatenate(Automaton.makeCharRange('\udc00', '\uded6'))));
-		
+
 		put(automata, "CJKCompatibilityIdeographsSupplement", Automaton.makeChar('\ud87e').concatenate(Automaton.makeCharRange('\udc00', '\ude1f')));
 		put(automata, "Tags", Automaton.makeChar('\udb40').concatenate(Automaton.makeCharRange('\udc00', '\udc7f')));
-		
+
 		put(automata, "PrivateUse", Automaton.makeCharRange('\uE000', '\uF8FF')
 				                   .union(Automaton.makeCharRange('\udb80', '\udbbe').concatenate(Automaton.makeCharRange('\udc00', '\udfff'))
 	                                      .union(Automaton.makeChar('\udbbf').concatenate(Automaton.makeCharRange('\udc00', '\udffd'))))
@@ -857,12 +859,7 @@ final public class Datatypes {
 	}
 	
 	private static Automaton makeCodePoint(int cp) {
-		if (cp >= 0x10000) {
-			cp -= 0x10000;
-			char[] cu = { (char)(0xd800 + (cp >> 10)), (char)(0xdc00 + (cp & 0x3ff)) };
-			return Automaton.makeString(new String(cu));
-		} else
-			return Automaton.makeChar((char)cp);
+		return Automaton.makeChar(cp);
 	}
 
 	private static Map<String,Automaton> buildMap(String[] exps) {
@@ -875,8 +872,8 @@ final public class Datatypes {
 	
 	private static void putWith(String[] exps, Map<String,Automaton> use) {
 		int i = 0;
-		while (i + 1 < exps.length)  
-			put(automata, exps[i++], new RegExp(exps[i++]).toAutomaton(use));	
+		while (i + 1 < exps.length)
+			put(automata, exps[i++], new RegExp(exps[i++]).toAutomaton(use));
 	}
 	
 	private static void putFrom(String name, Map<String,Automaton> from) {

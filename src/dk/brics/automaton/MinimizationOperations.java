@@ -230,7 +230,7 @@ final public class MinimizationOperations {
 		Set<Transition> tr = a.initial.getTransitions();
 		if (tr.size() == 1) {
 			Transition t = tr.iterator().next();
-			if (t.to == a.initial && t.min == Character.MIN_VALUE && t.max == Character.MAX_VALUE)
+			if (t.to == a.initial && t.min == Transition.MIN_VALUE && t.max == Transition.MAX_VALUE)
 				return;
 		}
 		a.totalize();
@@ -242,7 +242,7 @@ final public class MinimizationOperations {
 			states[number] = q;
 			q.number = number++;
 		}
-		char[] sigma = a.getStartPoints();
+		int[] sigma = a.getStartPoints();
 		// initialize data structures
 		ArrayList<ArrayList<LinkedList<State>>> reverse = new ArrayList<ArrayList<LinkedList<State>>>();
 		for (int q = 0; q < states.length; q++) {
@@ -283,7 +283,7 @@ final public class MinimizationOperations {
 			partition.get(j).add(qq);
 			block[qq.number] = j;
 			for (int x = 0; x < sigma.length; x++) {
-				char y = sigma[x];
+				int y = sigma[x];
 				State p = qq.step(y);
 				reverse.get(p.number).get(x).add(qq);
 				reverse_nonempty[p.number][x] = true;
@@ -466,7 +466,7 @@ final public class MinimizationOperations {
 			if (blocks.locations[tails[t]] == blocks.first[blocks.setNo[tails[t]]]) {
 				State tail = newStates[blocks.setNo[tails[t]]];
 				State head = newStates[blocks.setNo[heads[t]]];
-				tail.addTransition(new Transition((char)labels[t].n1, (char)labels[t].n2, head));
+				tail.addTransition(new Transition(labels[t].n1, labels[t].n2, head));
 			}
 		}
 		automaton.setInitialState(newStates[blocks.setNo[automaton.getInitialState().number]]);
@@ -485,7 +485,7 @@ final public class MinimizationOperations {
 	}
 
 	private static void splitTransitions(Set<State> states) {
-		TreeSet<Character> pointSet = new TreeSet<Character>();
+		TreeSet<Integer> pointSet = new TreeSet<Integer>();
 		for (State s : states) {
 			for (Transition t : s.getTransitions()) {
 				pointSet.add(t.min);
@@ -500,16 +500,16 @@ final public class MinimizationOperations {
 					s.addTransition(t);
 					continue;
 				}
-				SortedSet<Character> headSet = pointSet.headSet(t.max, true);
-				SortedSet<Character> tailSet = pointSet.tailSet(t.min, false);
-				SortedSet<Character> intersection = new TreeSet<Character>(headSet);
+				SortedSet<Integer> headSet = pointSet.headSet(t.max, true);
+				SortedSet<Integer> tailSet = pointSet.tailSet(t.min, false);
+				SortedSet<Integer> intersection = new TreeSet<Integer>(headSet);
 				intersection.retainAll(tailSet);
-				char start = t.min;
-				for (Character c : intersection) {
+				int start = t.min;
+				for (int c : intersection) {
 					s.addTransition(new Transition(start, t.to));
 					s.addTransition(new Transition(c, t.to));
 					if (c - start > 1)
-						s.addTransition(new Transition((char) (start + 1), (char) (c - 1), t.to));
+						s.addTransition(new Transition(start + 1, c - 1, t.to));
 					start = c;
 				}
 			}

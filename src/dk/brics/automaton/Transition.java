@@ -41,13 +41,16 @@ import java.io.Serializable;
 public class Transition implements Serializable, Cloneable {
 	
 	static final long serialVersionUID = 40001;
+
+	public static int MIN_VALUE = 0;
+	public static int MAX_VALUE = 0x10FFFF;
 	
 	/* 
 	 * CLASS INVARIANT: min<=max
 	 */
 	
-	char min;
-	char max;
+	int min;
+	int max;
 	
 	State to;
 	
@@ -56,7 +59,7 @@ public class Transition implements Serializable, Cloneable {
 	 * @param c transition character
 	 * @param to destination state
 	 */
-	public Transition(char c, State to)	{
+	public Transition(int c, State to)	{
 		min = max = c;
 		this.to = to;
 	}
@@ -68,9 +71,9 @@ public class Transition implements Serializable, Cloneable {
 	 * @param max transition interval maximum
 	 * @param to destination state
 	 */
-	public Transition(char min, char max, State to)	{
+	public Transition(int min, int max, State to)	{
 		if (max < min) {
-			char t = max;
+			int t = max;
 			max = min;
 			min = t;
 		}
@@ -80,12 +83,12 @@ public class Transition implements Serializable, Cloneable {
 	}
 	
 	/** Returns minimum of this transition interval. */
-	public char getMin() {
+	public int getMin() {
 		return min;
 	}
 	
 	/** Returns maximum of this transition interval. */
-	public char getMax() {
+	public int getMax() {
 		return max;
 	}
 	
@@ -131,8 +134,8 @@ public class Transition implements Serializable, Cloneable {
 			throw new RuntimeException(e);
 		}
 	}
-	
-	static void appendCharString(char c, StringBuilder b) {
+
+	static void appendCharStringH(char c, StringBuilder b) {
 		if (c >= 0x21 && c <= 0x7e && c != '\\' && c != '"')
 			b.append(c);
 		else {
@@ -146,6 +149,16 @@ public class Transition implements Serializable, Cloneable {
 				b.append("0").append(s);
 			else
 				b.append(s);
+		}
+	}
+
+	static void appendCharString(int cp, StringBuilder b) {
+		if (cp > 0xFFFF) {
+			b.append("\\u{");
+			b.append(Integer.toHexString(cp).toUpperCase());
+			b.append('}');
+		} else {
+			appendCharStringH((char) cp, b);
 		}
 	}
 	

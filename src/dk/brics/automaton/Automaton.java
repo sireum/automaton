@@ -46,6 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static dk.brics.automaton.StringUnionOperations.cpAt;
+import static dk.brics.automaton.StringUnionOperations.cpCount;
+
 /**
  * Finite-state automaton with regular expression operations.
  * <p>
@@ -335,17 +338,17 @@ public class Automaton implements Serializable, Cloneable {
 	 */
 	void totalize() {
 		State s = new State();
-		s.transitions.add(new Transition(Character.MIN_VALUE, Character.MAX_VALUE, s));
+		s.transitions.add(new Transition(Transition.MIN_VALUE, Transition.MAX_VALUE, s));
 		for (State p : getStates()) {
-			int maxi = Character.MIN_VALUE;
+			int maxi = Transition.MIN_VALUE;
 			for (Transition t : p.getSortedTransitions(false)) {
 				if (t.min > maxi)
-					p.transitions.add(new Transition((char)maxi, (char)(t.min - 1), s));
+					p.transitions.add(new Transition(maxi, t.min - 1, s));
 				if (t.max + 1 > maxi)
 					maxi = t.max + 1;
 			}
-			if (maxi <= Character.MAX_VALUE)
-				p.transitions.add(new Transition((char)maxi, Character.MAX_VALUE, s));
+			if (maxi <= Transition.MAX_VALUE)
+				p.transitions.add(new Transition(maxi, Transition.MAX_VALUE, s));
 		}
 	}
 	
@@ -380,20 +383,20 @@ public class Automaton implements Serializable, Cloneable {
 							max = t.max;
 					} else {
 						if (p != null)
-							s.transitions.add(new Transition((char)min, (char)max, p));
+							s.transitions.add(new Transition(min, max, p));
 						min = t.min;
 						max = t.max;
 					}
 				} else {
 					if (p != null)
-						s.transitions.add(new Transition((char)min, (char)max, p));
+						s.transitions.add(new Transition(min, max, p));
 					p = t.to;
 					min = t.min;
 					max = t.max;
 				}
 			}
 			if (p != null)
-				s.transitions.add(new Transition((char)min, (char)max, p));
+				s.transitions.add(new Transition(min, max, p));
 		}
 		clearHashCode();
 	}
@@ -401,19 +404,19 @@ public class Automaton implements Serializable, Cloneable {
 	/** 
 	 * Returns sorted array of all interval start points. 
 	 */
-	char[] getStartPoints() {
-		Set<Character> pointset = new HashSet<Character>();
-		pointset.add(Character.MIN_VALUE);
+	int[] getStartPoints() {
+		Set<Integer> pointset = new HashSet<Integer>();
+		pointset.add(Transition.MIN_VALUE);
 		for (State s : getStates()) {
 			for (Transition t : s.transitions) {
 				pointset.add(t.min);
-				if (t.max < Character.MAX_VALUE)
-					pointset.add((char)(t.max + 1));
+				if (t.max < Transition.MAX_VALUE)
+					pointset.add(t.max + 1);
 			}
 		}
-		char[] points = new char[pointset.size()];
+		int[] points = new int[pointset.size()];
 		int n = 0;
-		for (Character m : pointset)
+		for (int m : pointset)
 			points[n++] = m;
 		Arrays.sort(points);
 		return points;
@@ -487,10 +490,10 @@ public class Automaton implements Serializable, Cloneable {
 		if (isSingleton()) {
 			State p = new State();
 			initial = p;
-			for (int i = 0; i < singleton.length(); i++) {
+			for (int i = 0; i < cpCount(singleton); i++) {
 				State q = new State();
 				q.number = i;
-				p.transitions.add(new Transition(singleton.charAt(i), q));
+				p.transitions.add(new Transition(cpAt(singleton, i), q));
 				p = q;
 			}
 			p.accept = true;
@@ -575,8 +578,10 @@ public class Automaton implements Serializable, Cloneable {
 		StringBuilder b = new StringBuilder();
 		if (isSingleton()) {
 			b.append("singleton: ");
-			for (char c : singleton.toCharArray())
-				Transition.appendCharString(c, b);
+			int size = cpCount(singleton);
+			for (int i = 0; i < size; i++) {
+				Transition.appendCharString(cpAt(singleton, i), b);
+			}
 			b.append("\n");
 		} else {
 			Set<State> states = getStates();
@@ -735,20 +740,20 @@ public class Automaton implements Serializable, Cloneable {
 	}
 	
 	/** 
-	 * See {@link BasicAutomata#makeChar(char)}.
+	 * See {@link BasicAutomata#makeChar(int)}.
 	 */
-	public static Automaton makeChar(char c) {
+	public static Automaton makeChar(int c) {
 		return BasicAutomata.makeChar(c);
 	}
 	
 	/** 
-	 * See {@link BasicAutomata#makeCharRange(char, char)}.
+	 * See {@link BasicAutomata#makeCharRange(int, int)}.
 	 */
-	public static Automaton makeCharRange(char min, char max) {
+	public static Automaton makeCharRange(int min, int max) {
 		return BasicAutomata.makeCharRange(min, max);
 	}
-	
-	/** 
+
+	/**
 	 * See {@link BasicAutomata#makeCharSet(String)}.
 	 */
 	public static Automaton makeCharSet(String set) {
@@ -989,37 +994,37 @@ public class Automaton implements Serializable, Cloneable {
 	}
 	
 	/**
-	 * See {@link SpecialOperations#trim(Automaton, String, char)}.
+	 * See {@link SpecialOperations#trim(Automaton, String, int)}.
 	 */
-	public Automaton trim(String set, char c) {
+	public Automaton trim(String set, int c) {
 		return SpecialOperations.trim(this, set, c);
 	}
 	
 	/**
-	 * See {@link SpecialOperations#compress(Automaton, String, char)}.
+	 * See {@link SpecialOperations#compress(Automaton, String, int)}.
 	 */
-	public Automaton compress(String set, char c) {
+	public Automaton compress(String set, int c) {
 		return SpecialOperations.compress(this, set, c);
 	}
 	
 	/**
 	 * See {@link SpecialOperations#subst(Automaton, Map)}.
 	 */
-	public Automaton subst(Map<Character,Set<Character>> map) {
+	public Automaton subst(Map<Integer,Set<Integer>> map) {
 		return SpecialOperations.subst(this, map);
 	}
 
 	/**
-	 * See {@link SpecialOperations#subst(Automaton, char, String)}.
+	 * See {@link SpecialOperations#subst(Automaton, int, String)}.
 	 */
-	public Automaton subst(char c, String s) {
+	public Automaton subst(int c, String s) {
 		return SpecialOperations.subst(this, c, s);
 	}
 	
 	/**
-	 * See {@link SpecialOperations#homomorph(Automaton, char[], char[])}.
+	 * See {@link SpecialOperations#homomorph(Automaton, int[], int[])}.
 	 */
-	public Automaton homomorph(char[] source, char[] dest) {
+	public Automaton homomorph(int[] source, int[] dest) {
 		return SpecialOperations.homomorph(this, source, dest);
 	}
 	
@@ -1087,9 +1092,9 @@ public class Automaton implements Serializable, Cloneable {
 	}
 	
 	/**
-	 * See {@link ShuffleOperations#shuffleSubsetOf(Collection, Automaton, Character, Character)}.
+	 * See {@link ShuffleOperations#shuffleSubsetOf(Collection, Automaton, int, int)}.
 	 */ 
-	public static String shuffleSubsetOf(Collection<Automaton> ca, Automaton a, Character suspend_shuffle, Character resume_shuffle) {
+	public static String shuffleSubsetOf(Collection<Automaton> ca, Automaton a, int suspend_shuffle, int resume_shuffle) {
 		return ShuffleOperations.shuffleSubsetOf(ca, a, suspend_shuffle, resume_shuffle);
 	}
 

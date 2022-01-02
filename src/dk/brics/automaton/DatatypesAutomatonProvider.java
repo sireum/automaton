@@ -29,6 +29,8 @@
 
 package dk.brics.automaton;
 
+// TODO: Adapt to codepoint
+
 /**
  * Automaton provider based on {@link Datatypes}.
  */

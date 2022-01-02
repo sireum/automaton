@@ -39,6 +39,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static dk.brics.automaton.StringUnionOperations.cpAt;
+import static dk.brics.automaton.StringUnionOperations.cpCount;
+
 /**
  * Basic automata operations.
  */
@@ -309,7 +312,7 @@ final public class BasicOperations {
 			for (int n1 = 0, b2 = 0; n1 < t1.length; n1++) {
 				while (b2 < t2.length && t2[b2].max < t1[n1].min)
 					b2++;
-				for (int n2 = b2; n2 < t2.length && t1[n1].max >= t2[n2].min; n2++) 
+				for (int n2 = b2; n2 < t2.length && t1[n1].max >= t2[n2].min; n2++)
 					if (t2[n2].max >= t1[n1].min) {
 						StatePair q = new StatePair(t1[n1].to, t2[n2].to);
 						StatePair r = newstates.get(q);
@@ -319,8 +322,8 @@ final public class BasicOperations {
 							newstates.put(q, q);
 							r = q;
 						}
-						char min = t1[n1].min > t2[n2].min ? t1[n1].min : t2[n2].min;
-						char max = t1[n1].max < t2[n2].max ? t1[n1].max : t2[n2].max;
+						int min = t1[n1].min > t2[n2].min ? t1[n1].min : t2[n2].min;
+						int max = t1[n1].max < t2[n2].max ? t1[n1].max : t2[n2].max;
 						p.s.transitions.add(new Transition(min, max, r.s));
 					}
 			}
@@ -368,11 +371,11 @@ final public class BasicOperations {
 				for (int n2 = b2; n2 < t2.length && t1[n1].max >= t2[n2].min; n2++) {
 					if (t2[n2].min > min1)
 						return false;
-					if (t2[n2].max < Character.MAX_VALUE) 
+					if (t2[n2].max < Transition.MAX_VALUE)
 						min1 = t2[n2].max + 1;
 					else {
-						min1 = Character.MAX_VALUE;
-						max1 = Character.MIN_VALUE;
+						min1 = Transition.MAX_VALUE;
+						max1 = Transition.MIN_VALUE;
 					}
 					StatePair q = new StatePair(t1[n1].to, t2[n2].to);
 					if (!visited.contains(q)) {
@@ -453,7 +456,7 @@ final public class BasicOperations {
 	 * Determinizes the given automaton using the given set of initial states. 
 	 */
 	static void determinize(Automaton a, Set<State> initialset) {
-		char[] points = a.getStartPoints();
+		int[] points = a.getStartPoints();
 		// subset construction
 		LinkedList<Set<State>> worklist = new LinkedList<Set<State>>();
 		Map<Set<State>, State> newstate = new HashMap<Set<State>, State>();
@@ -481,12 +484,12 @@ final public class BasicOperations {
                         q = new State();
                         newstate.put(p, q);
                     }
-                    char min = points[n];
-                    char max;
+                    int min = points[n];
+                    int max;
                     if (n + 1 < points.length)
-                        max = (char) (points[n + 1] - 1);
+                        max = points[n + 1] - 1;
                     else
-                        max = Character.MAX_VALUE;
+                        max = Transition.MAX_VALUE;
                     r.transitions.add(new Transition(min, max, q));
                 }
 			}
@@ -585,7 +588,7 @@ final public class BasicOperations {
 			return false;
 		if (a.initial.accept && a.initial.transitions.size() == 1) {
 			Transition t = a.initial.transitions.iterator().next();
-			return t.to == a.initial && t.min == Character.MIN_VALUE && t.max == Character.MAX_VALUE;
+			return t.to == a.initial && t.min == Transition.MIN_VALUE && t.max == Transition.MAX_VALUE;
 		}
 		return false;
 	}
@@ -645,10 +648,11 @@ final public class BasicOperations {
 	public static boolean run(Automaton a, String s) {
 		if (a.isSingleton())
 			return s.equals(a.singleton);
+		int size = cpCount(s);
 		if (a.deterministic) {
 			State p = a.initial;
-			for (int i = 0; i < s.length(); i++) {
-				State q = p.step(s.charAt(i));
+			for (int i = 0; i < size; i++) {
+				State q = p.step(cpAt(s, i));
 				if (q == null)
 					return false;
 				p = q;
@@ -664,8 +668,8 @@ final public class BasicOperations {
 			pp.add(a.initial);
 			ArrayList<State> dest = new ArrayList<State>();
 			boolean accept = a.initial.accept;
-			for (int i = 0; i < s.length(); i++) {
-				char c = s.charAt(i);
+			for (int i = 0; i < size; i++) {
+				int c = cpAt(s, i);
 				accept = false;
 				pp_other.clear();
 				bb_other.clear();

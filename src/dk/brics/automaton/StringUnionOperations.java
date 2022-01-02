@@ -38,7 +38,7 @@ final public class StringUnionOperations {
 	final static class State {
 
 		/** An empty set of labels. */
-		private final static char[] NO_LABELS = new char[0];
+		private final static int[] NO_LABELS = new int[0];
 
 		/** An empty set of states. */
 		private final static State[] NO_STATES = new State[0];
@@ -47,7 +47,7 @@ final public class StringUnionOperations {
 		 * Labels of outgoing transitions. Indexed identically to {@link #states}.
 		 * Labels must be sorted lexicographically.
 		 */
-		char[] labels = NO_LABELS;
+		int[] labels = NO_LABELS;
 
 		/**
 		 * States reachable from outgoing transitions. Indexed identically to
@@ -66,7 +66,7 @@ final public class StringUnionOperations {
 		 * with <code>label</code>. If no such transition exists, returns
 		 * <code>null</code>.
 		 */
-		public State getState(char label) {
+		public State getState(int label) {
 			final int index = Arrays.binarySearch(labels, label);
 			return index >= 0 ? states[index] : null; 
 		}
@@ -76,7 +76,7 @@ final public class StringUnionOperations {
 		 * lexicographic order and indexes correspond to states returned from 
 		 * {@link #getStates()}.
 		 */
-		public char [] getTransitionLabels() {
+		public int[] getTransitionLabels() {
 			return this.labels;
 		}
 
@@ -128,7 +128,7 @@ final public class StringUnionOperations {
 			int hash = is_final ? 1 : 0;
 
 			hash ^= hash * 31 + this.labels.length;
-			for (char c : this.labels)
+			for (int c : this.labels)
 				hash ^= hash * 31 + c;
 
 			/*
@@ -148,7 +148,7 @@ final public class StringUnionOperations {
 		 * Create a new outgoing transition labeled <code>label</code> and return
 		 * the newly created target state for this transition.
 		 */
-		State newState(char label) {
+		State newState(int label) {
 			assert Arrays.binarySearch(labels, label) < 0 : "State already has transition labeled: "
 				+ label;
 
@@ -171,7 +171,7 @@ final public class StringUnionOperations {
 		 * Return the associated state if the most recent transition
 		 * is labeled with <code>label</code>.
 		 */
-		State lastChild(char label) {
+		State lastChild(int label) {
 			final int index = labels.length - 1;
 			State s = null;
 			if (index >= 0 && labels[index] == label) {
@@ -193,8 +193,8 @@ final public class StringUnionOperations {
 		/**
 		 * JDK1.5-replacement of {@link Arrays#copyOf(char[], int)}
 		 */
-		private static char[] copyOf(char[] original, int newLength) {
-			char[] copy = new char[newLength];
+		private static int[] copyOf(int[] original, int newLength) {
+			int[] copy = new int[newLength];
 			System.arraycopy(original, 0, copy, 0, Math.min(original.length,
 					newLength));
 			return copy;
@@ -251,10 +251,11 @@ final public class StringUnionOperations {
 			"Input must be sorted: " + previous + " >= " + current;
 		assert setPrevious(current);
 
-		// Descend in the automaton (find matching prefix). 
-		int pos = 0, max = current.length();
+		// Descend in the automaton (find matching prefix).
+		String s = current.toString();
+		int pos = 0, max = cpCount(s);
 		State next, state = root;
-		while (pos < max && (next = state.lastChild(current.charAt(pos))) != null) {
+		while (pos < max && (next = state.lastChild(cpAt(s, pos))) != null) {
 			state = next;
 			pos++;
 		}
@@ -296,7 +297,7 @@ final public class StringUnionOperations {
 
 		visited.put(s, converted);
 		int i = 0;
-		char [] labels = s.labels;
+		int[] labels = s.labels;
 		for (StringUnionOperations.State target : s.states) {
 			converted.addTransition(new Transition(labels[i++], convert(target, visited)));
 		}
@@ -352,10 +353,25 @@ final public class StringUnionOperations {
 	 * (inclusive) to state <code>state</code>.
 	 */
 	private void addSuffix(State state, CharSequence current, int fromIndex) {
-		final int len = current.length();
+		String s = current.toString();
+		final int len = cpCount(s);
 		for (int i = fromIndex; i < len; i++) {
-			state = state.newState(current.charAt(i));
+			state = state.newState(cpAt(s, i));
 		}
 		state.is_final = true;
 	}
+
+	public static int cpAt(String s, int i) {
+		return s.codePointAt(s.offsetByCodePoints(0, i));
+	}
+
+	public static int cpCount(String s) {
+		return s.codePointCount(0, s.length());
+	}
+
+	public static String cpSubstring(String s, int start, int end) {
+		int a = s.offsetByCodePoints(0, start);
+		return s.substring(a, s.offsetByCodePoints(a, end - start));
+	}
+
 }

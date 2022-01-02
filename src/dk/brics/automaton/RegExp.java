@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static dk.brics.automaton.StringUnionOperations.*;
+
 /**
  * Regular Expression extension to <code>Automaton</code>.
  * <p>
@@ -169,17 +171,21 @@ public class RegExp {
 	Kind kind;
 	RegExp exp1, exp2;
 	String s;
-	char c;
+	int c;
 	int min, max, digits;
-	char from, to;
+	int from, to;
 	
-	String b;
+	final String b;
+	final int bSize;
 	int flags;
 	int pos;
 	
-	RegExp() {}
-	
-	/** 
+	RegExp() {
+		b = "";
+		bSize = 0;
+	}
+
+	/**
 	 * Constructs new <code>RegExp</code> from a string. 
 	 * Same as <code>RegExp(s, ALL)</code>.
 	 * @param s regexp string
@@ -197,13 +203,14 @@ public class RegExp {
 	 */
 	public RegExp(String s, int syntax_flags) throws IllegalArgumentException {
 		b = s;
+		bSize = cpCount(s);
 		flags = syntax_flags;
 		RegExp e;
 		if (s.length() == 0)
 			e = makeString("");
 		else {
 			e = parseUnionExp();
-			if (pos < b.length())
+			if (pos < bSize)
 				throw new IllegalArgumentException("end-of-string expected at position " + pos);
 		}
 		kind = e.kind;
@@ -216,7 +223,7 @@ public class RegExp {
 		digits = e.digits;
 		from = e.from;
 		to = e.to;
-		b = null;
+		//b = null;
 	}
 	
 	/** 
@@ -481,8 +488,9 @@ public class RegExp {
 			if (s.indexOf('"') == -1) {
 				b.append("\"").append(s).append("\"");
 			} else {
-				for (int i = 0; i < s.length(); i++) {
-					appendChar(s.charAt(i), b);
+				int size = cpCount(s);
+				for (int i = 0; i < size; i++) {
+					appendChar(cpAt(s, i), b);
 				}
 			}
 			break;
@@ -509,7 +517,7 @@ public class RegExp {
 		return b;
 	}
 
-	private void appendChar(char c, StringBuilder b) {
+	private void appendChar(int c, StringBuilder b) {
 		if ("|&?*+{},![]^-.#@\"()<>\\".indexOf(c) != -1) {
 			b.append("\\");
 		}
@@ -637,14 +645,14 @@ public class RegExp {
 		return r;
 	}
 
-	static RegExp makeChar(char c) {
+	static RegExp makeChar(int c) {
 		RegExp r = new RegExp();
 		r.kind = Kind.REGEXP_CHAR;
 		r.c = c;
 		return r;
 	}
 
-	static RegExp makeCharRange(char from, char to) {
+	static RegExp makeCharRange(int from, int to) {
 		RegExp r = new RegExp();
 		r.kind = Kind.REGEXP_CHAR_RANGE;
 		r.from = from;
@@ -694,13 +702,13 @@ public class RegExp {
 	}
 
 	private boolean peek(String s) {
-		return more() && s.indexOf(b.charAt(pos)) != -1;
+		return more() && s.indexOf(cpAt(b, pos)) != -1;
 	}
 
 	private boolean match(char c) {
-		if (pos >= b.length())
+		if (pos >= bSize)
 			return false;
-		if (b.charAt(pos) == c) {
+		if (cpAt(b, pos) == c) {
 			pos++;
 			return true;
 		}
@@ -708,13 +716,13 @@ public class RegExp {
 	}
 
 	private boolean more() {
-		return pos < b.length();
+		return pos < bSize;
 	}
 
-	private char next() throws IllegalArgumentException {
+	private int next() throws IllegalArgumentException {
 		if (!more())
 			throw new IllegalArgumentException("unexpected end-of-string");
-		return b.charAt(pos++);
+		return cpAt(b, pos++);
 	}
 
 	private boolean check(int flag) {
@@ -757,14 +765,14 @@ public class RegExp {
 					next();
 				if (start == pos)
 					throw new IllegalArgumentException("integer expected at position " + pos);
-				int n = Integer.parseInt(b.substring(start, pos));
+				int n = Integer.parseInt(cpSubstring(b, start, pos));
 				int m = -1;
 				if (match(',')) {
 					start = pos;
 					while (peek("0123456789"))
 						next();
 					if (start != pos)
-						m = Integer.parseInt(b.substring(start, pos));
+						m = Integer.parseInt(cpSubstring(b, start, pos));
 				} else
 					m = n;
 				if (!match('}'))
@@ -808,7 +816,7 @@ public class RegExp {
 	}
 
 	final RegExp parseCharClass() throws IllegalArgumentException {
-		char c = parseCharExp();
+		int c = parseCharExp();
 		if (match('-'))
 			if (peek("]"))
                 return makeUnion(makeChar(c), makeChar('-'));
@@ -831,7 +839,7 @@ public class RegExp {
 				next();
 			if (!match('"'))
 				throw new IllegalArgumentException("expected '\"' at position " + pos);
-			return makeString(b.substring(start, pos - 1));
+			return makeString(cpSubstring(b, start, pos - 1));
 		} else if (match('(')) {
 			if (match(')'))
 				return makeString("");
@@ -845,7 +853,8 @@ public class RegExp {
 				next();
 			if (!match('>'))
 				throw new IllegalArgumentException("expected '>' at position " + pos);
-			String s = b.substring(start, pos - 1);
+			String s = cpSubstring(b, start, pos - 1);
+			int sSize = cpCount(s);
 			int i = s.indexOf('-');
 			if (i == -1) {
 				if (!check(AUTOMATON))
@@ -857,8 +866,8 @@ public class RegExp {
 				try {
 					if (i == 0 || i == s.length() - 1 || i != s.lastIndexOf('-'))
 						throw new NumberFormatException();
-					String smin = s.substring(0, i);
-					String smax = s.substring(i + 1, s.length());
+					String smin = cpSubstring(s, 0, i);
+					String smax = cpSubstring(s, i + 1, sSize);
 					int imin = Integer.parseInt(smin);
 					int imax = Integer.parseInt(smax);
 					int digits;
@@ -880,7 +889,7 @@ public class RegExp {
 			return makeChar(parseCharExp());
 	}
 
-	final char parseCharExp() throws IllegalArgumentException {
+	final int parseCharExp() throws IllegalArgumentException {
 		match('\\');
 		return next();
 	}

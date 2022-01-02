@@ -35,10 +35,14 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import static dk.brics.automaton.StringUnionOperations.*;
+
 /**
  * Construction of basic automata.
  */
 final public class BasicAutomata {
+
+	public static Automaton ws = Automaton.minimize(Automaton.makeCharSet(" \t\n\r").repeat());
 	
 	private BasicAutomata() {}
 
@@ -70,7 +74,7 @@ final public class BasicAutomata {
 		State s = new State();
 		a.initial = s;
 		s.accept = true;
-		s.transitions.add(new Transition(Character.MIN_VALUE, Character.MAX_VALUE, s));
+		s.transitions.add(new Transition(Transition.MIN_VALUE, Transition.MAX_VALUE, s));
 		a.deterministic = true;
 		return a;
 	}
@@ -79,13 +83,13 @@ final public class BasicAutomata {
 	 * Returns a new (deterministic) automaton that accepts any single character. 
 	 */
 	public static Automaton makeAnyChar() {
-		return makeCharRange(Character.MIN_VALUE, Character.MAX_VALUE);
+		return makeCharRange(Transition.MIN_VALUE, Transition.MAX_VALUE);
 	}
 	
 	/** 
 	 * Returns a new (deterministic) automaton that accepts a single character of the given value. 
 	 */
-	public static Automaton makeChar(char c) {
+	public static Automaton makeChar(int c) {
 		Automaton a = new Automaton();
 		a.singleton = Character.toString(c);
 		a.deterministic = true;
@@ -96,7 +100,7 @@ final public class BasicAutomata {
 	 * Returns a new (deterministic) automaton that accepts a single char 
 	 * whose value is in the given interval (including both end points). 
 	 */
-	public static Automaton makeCharRange(char min, char max) {
+	public static Automaton makeCharRange(int min, int max) {
 		if (min == max)
 			return makeChar(min);
 		Automaton a = new Automaton();
@@ -121,8 +125,9 @@ final public class BasicAutomata {
 		State s2 = new State();
 		a.initial = s1;
 		s2.accept = true;
-		for (int i = 0; i < set.length(); i++)
-			s1.transitions.add(new Transition(set.charAt(i), s2));
+		int size = cpCount(set);
+		for (int i = 0; i < size; i++)
+			s1.transitions.add(new Transition(cpAt(set, i), s2));
 		a.deterministic = true;
 		a.reduce();
 		return a;
@@ -132,12 +137,12 @@ final public class BasicAutomata {
 	 * Constructs sub-automaton corresponding to decimal numbers of 
 	 * length x.substring(n).length().
 	 */
-	private static State anyOfRightLength(String x, int n) {
+	private static State anyOfRightLength(String x, int size, int n) {
 		State s = new State();
-		if (x.length() == n)
+		if (size == n)
 			s.setAccept(true);
 		else
-			s.addTransition(new Transition('0', '9', anyOfRightLength(x, n + 1)));
+			s.addTransition(new Transition('0', '9', anyOfRightLength(x, size, n + 1)));
 		return s;
 	}
 	
@@ -145,17 +150,17 @@ final public class BasicAutomata {
 	 * Constructs sub-automaton corresponding to decimal numbers of value 
 	 * at least x.substring(n) and length x.substring(n).length().
 	 */
-	private static State atLeast(String x, int n, Collection<State> initials, boolean zeros) {
+	private static State atLeast(String x, int size, int n, Collection<State> initials, boolean zeros) {
 		State s = new State();
-		if (x.length() == n)
+		if (size == n)
 			s.setAccept(true);
 		else {
 			if (zeros)
 				initials.add(s);
-			char c = x.charAt(n);
-			s.addTransition(new Transition(c, atLeast(x, n + 1, initials, zeros && c == '0')));
+			int c = cpAt(x, n);
+			s.addTransition(new Transition(c, atLeast(x, size,n + 1, initials, zeros && c == '0')));
 			if (c < '9')
-				s.addTransition(new Transition((char)(c + 1), '9', anyOfRightLength(x, n + 1)));
+				s.addTransition(new Transition(c + 1, '9', anyOfRightLength(x, size, n + 1)));
 		}
 		return s;
 	}
@@ -164,15 +169,15 @@ final public class BasicAutomata {
 	 * Constructs sub-automaton corresponding to decimal numbers of value 
 	 * at most x.substring(n) and length x.substring(n).length().
 	 */
-	private static State atMost(String x, int n) {
+	private static State atMost(String x, int size, int n) {
 		State s = new State();
-		if (x.length() == n)
+		if (size == n)
 			s.setAccept(true);
 		else {
-			char c = x.charAt(n);
-			s.addTransition(new Transition(c, atMost(x, (char)n + 1)));
+			int c = cpAt(x, n);
+			s.addTransition(new Transition(c, atMost(x, size, n + 1)));
 			if (c > '0')
-				s.addTransition(new Transition('0', (char)(c - 1), anyOfRightLength(x, n + 1)));
+				s.addTransition(new Transition('0', c - 1, anyOfRightLength(x, size, n + 1)));
 		}
 		return s;
 	}
@@ -182,22 +187,22 @@ final public class BasicAutomata {
 	 * between x.substring(n) and y.substring(n) and of
 	 * length x.substring(n).length() (which must be equal to y.substring(n).length()).
 	 */
-	private static State between(String x, String y, int n, Collection<State> initials, boolean zeros) {
+	private static State between(String x, String y, int size, int n, Collection<State> initials, boolean zeros) {
 		State s = new State();
-		if (x.length() == n)
+		if (size == n)
 			s.setAccept(true);
 		else {
 			if (zeros)
 				initials.add(s);
-			char cx = x.charAt(n);
-			char cy = y.charAt(n);
+			int cx = cpAt(x, n);
+			int cy = cpAt(y, n);
 			if (cx == cy)
-				s.addTransition(new Transition(cx, between(x, y, n + 1, initials, zeros && cx == '0')));
+				s.addTransition(new Transition(cx, between(x, y, size, n + 1, initials, zeros && cx == '0')));
 			else { // cx<cy
-				s.addTransition(new Transition(cx, atLeast(x, n + 1, initials, zeros && cx == '0')));
-				s.addTransition(new Transition(cy, atMost(y, n + 1)));
+				s.addTransition(new Transition(cx, atLeast(x, size, n + 1, initials, zeros && cx == '0')));
+				s.addTransition(new Transition(cy, atMost(y, size,n + 1)));
 				if (cx + 1 < cy)
-					s.addTransition(new Transition((char)(cx + 1), (char)(cy - 1), anyOfRightLength(x, n + 1)));
+					s.addTransition(new Transition(cx + 1, cy - 1, anyOfRightLength(x, size,n + 1)));
 			}
 		}
 		return s;
@@ -236,7 +241,7 @@ final public class BasicAutomata {
 		by.append(y);
 		y = by.toString();
 		Collection<State> initials = new ArrayList<State>();
-		a.initial = between(x, y, 0, initials, digits <= 0);
+		a.initial = between(x, y, x.length(), 0, initials, digits <= 0);
 		if (digits <= 0) {
 			ArrayList<StatePair> pairs = new ArrayList<StatePair>();
 			for (State p : initials)
@@ -382,8 +387,8 @@ final public class BasicAutomata {
 			s = Automaton.makeChar('-');
 		else
 			s = Automaton.makeChar('+').optional();
-		Automaton ws = Datatypes.getWhitespaceAutomaton();
-		return Automaton.minimize(ws.concatenate(s.concatenate(Automaton.makeChar('0').repeat()).concatenate(Automaton.makeString(b.toString()))).concatenate(ws));		
+		//Automaton ws = Datatypes.getWhitespaceAutomaton();
+		return Automaton.minimize(ws.concatenate(s.concatenate(Automaton.makeChar('0').repeat()).concatenate(Automaton.makeString(b.toString()))).concatenate(ws));
 	}
 	
 	/**
@@ -430,10 +435,10 @@ final public class BasicAutomata {
 			d = Automaton.makeChar('.').concatenate(Automaton.makeChar('0').repeat(1)).optional();
 		else
 			d = Automaton.makeChar('.').concatenate(Automaton.makeString(b2.toString())).concatenate(Automaton.makeChar('0').repeat());
-		Automaton ws = Datatypes.getWhitespaceAutomaton();
+		//Automaton ws = Datatypes.getWhitespaceAutomaton();
 		return Automaton.minimize(ws.concatenate(s.concatenate(Automaton.makeChar('0').repeat()).concatenate(Automaton.makeString(b1.toString())).concatenate(d)).concatenate(ws));
 	}
-	
+
 	/**
 	 * Constructs deterministic automaton that matches strings that contain the given substring.
 	 */
@@ -445,38 +450,39 @@ final public class BasicAutomata {
 			states[i+1] = new State();
 		State f = states[s.length()];
 		f.accept = true;
-		f.transitions.add(new Transition(Character.MIN_VALUE, Character.MAX_VALUE, f));
-		for (int i = 0; i < s.length(); i++) {
-			Set<Character> done = new HashSet<Character>();
-			char c = s.charAt(i);
+		f.transitions.add(new Transition(Transition.MIN_VALUE, Transition.MAX_VALUE, f));
+		int size = cpCount(s);
+		for (int i = 0; i < size; i++) {
+			Set<Integer> done = new HashSet<Integer>();
+			int c = cpAt(s, i);
 			states[i].transitions.add(new Transition(c, states[i+1]));
 			done.add(c);
 			for (int j = i; j >= 1; j--) {
-				char d = s.charAt(j-1);
-				if (!done.contains(d) && s.substring(0, j-1).equals(s.substring(i-j+1, i))) {
+				int d = cpAt(s,j-1);
+				if (!done.contains(d) && cpSubstring(s, 0, j-1).equals(cpSubstring(s,i-j+1, i))) {
 					states[i].transitions.add(new Transition(d, states[j]));
 					done.add(d);
 				}
 			}
-			char[] da = new char[done.size()];
+			int[] da = new int[done.size()];
 			int h = 0;
-			for (char w : done)
+			for (int w : done)
 				da[h++] = w;
 			Arrays.sort(da);
-			int from = Character.MIN_VALUE;
+			int from = Transition.MIN_VALUE;
 			int k = 0;
-			while (from <= Character.MAX_VALUE) {
+			while (from <= Transition.MAX_VALUE) {
 				while (k < da.length && da[k] == from) {
 					k++;
 					from++;
 				}
-				if (from <= Character.MAX_VALUE) {
-					int to = Character.MAX_VALUE;
+				if (from <= Transition.MAX_VALUE) {
+					int to = Transition.MAX_VALUE;
 					if (k < da.length) {
 						to = da[k]-1;
 						k++;
 					}
-					states[i].transitions.add(new Transition((char)from, (char)to, states[0]));
+					states[i].transitions.add(new Transition(from, to, states[0]));
 					from = to+2;
 				}
 			}

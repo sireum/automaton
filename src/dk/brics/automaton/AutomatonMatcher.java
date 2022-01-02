@@ -31,6 +31,9 @@ package dk.brics.automaton;
 
 import java.util.regex.MatchResult;
 
+import static dk.brics.automaton.StringUnionOperations.cpAt;
+import static dk.brics.automaton.StringUnionOperations.cpCount;
+
 /**
  * A tool that performs match operations on a given character sequence using
  * a compiled automaton.
@@ -42,12 +45,12 @@ import java.util.regex.MatchResult;
 public class AutomatonMatcher implements MatchResult {
 
 	AutomatonMatcher(final CharSequence chars, final RunAutomaton automaton) {
-		this.chars = chars;
+		this.chars = chars.toString();
 		this.automaton = automaton;
 	}
 
 	private final RunAutomaton automaton;
-	private final CharSequence chars;
+	private final String chars;
 
 	private int matchStart = -1;
 
@@ -90,11 +93,11 @@ public class AutomatonMatcher implements MatchResult {
 			match_start = -1;
 			match_end = -1;
 		}
-		int l = getChars().length();
+		int l = cpCount(getChars());
 		while (begin < l) {
 			int p = automaton.getInitialState();
 			for (int i = begin; i < l; i++) {
-				final int new_state = automaton.step(p, getChars().charAt(i));
+				final int new_state = automaton.step(p, cpAt(getChars(), i));
 				if (new_state == -1) {
 				    break;
 				} else if (automaton.isAccept(new_state)) {
@@ -135,7 +138,7 @@ public class AutomatonMatcher implements MatchResult {
 		return matchEnd;
 	}
 
-	private CharSequence getChars() {
+	private String getChars() {
 		return chars;
 	}
 
