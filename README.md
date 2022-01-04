@@ -2,7 +2,7 @@
 
 [![](https://jitpack.io/v/org.sireum/automaton.svg)](https://jitpack.io/#org.sireum/automaton)
 
-Copyright (C) 2001-2021 Anders Møller
+Copyright (C) 2001-2022 Anders Møller
 
 This source code in this package may be used under the terms of the
 BSD license.  Please read the file 'COPYING' for details.
